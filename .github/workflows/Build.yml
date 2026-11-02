@@ -11,9 +11,18 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Initialize Pacman Keyring
+        run: |
+          pacman-key --init
+          pacman-key --populate dkp || true
+
       - name: Install Switch Development Libraries
         run: |
-          dkp-pacman -Syu --noconfirm switch-dev
+          dkp-pacman -Sy --noconfirm switch-dev libnx switch-tools
+
+      - name: Verify Project Structure
+        run: |
+          ls -R
 
       - name: Run Make Compiler
         run: |
