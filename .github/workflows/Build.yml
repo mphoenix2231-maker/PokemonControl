@@ -18,24 +18,46 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wget gdebi-core make curl
           
-          # Download installer using browser User-Agent to bypass Cloudflare blocks
+          # Download devkitPro installer with browser User-Agent
           wget -U "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" https://apt.devkitpro.org/install-devkitpro-pacman
           chmod +x ./install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
           
-          # Force sync and install core packages explicitly
+          # Force dkp-pacman package sync and install tools
           sudo dkp-pacman -Sy --noconfirm
           sudo dkp-pacman -S --noconfirm switch-dev libnx switch-tools
 
-      - name: Compile NRO Binary
+      - name: Compile NRO Binary and Force ELF2NRO Execution
         run: |
+          # Export path variables so Make can locate elf2nro and devkitA64 tools
           export DEVKITPRO=/opt/devkitpro
           export DEVKITA64=/opt/devkitpro/devkitA64
-          export PATH=$PATH:$DEVKITPRO/tools/bin
+          export PATH=/opt/devkitpro/tools/bin:/opt/devkitpro/devkitA64/bin:$PATH
           
-          # Create build directory explicitly before running make
-          mkdir -p build
+          # Build target
+          make clean
           make
+          
+          # Fallback check: If make built the ELF but missed NRO creation, run elf2nro directly
+          if [ -f "build/PokemonControl.elf" ] && [ ! -f "PokemonControl.nro" ]; then
+            echo "Converting ELF to NRO manually via elf2nro..."
+            elf2nro build/PokemonControl.elf PokemonControl.nro
+          elif [ -f "PokemonControl.elf" ] && [ ! -f "PokemonControl.nro" ]; then
+            echo "Converting root ELF to NRO manually..."
+            elf2nro PokemonControl.elf PokemonControl.nro
+          fi
+
+      - name: Verify NRO Output
+        run: |
+          if [ -f "PokemonControl.nro" ]; then
+            echo "SUCCESS: PokemonControl.nro generated!"
+            ls -lh PokemonControl.nro
+          else
+            echo "ERROR: NRO file was not created. Checking directory layout:"
+            ls -la
+            ls -la build/ || true
+            exit 1
+          fi
 
       - name: Upload Compiled NRO Artifact
         uses: actions/upload-artifact@v4
