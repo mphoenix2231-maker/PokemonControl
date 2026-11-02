@@ -13,25 +13,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Dependencies & DevkitPro Toolchain
+      - name: Install DevkitPro and Switch Toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget gdebi-core make
+          sudo apt-get install -y wget gdebi-core make curl
           
-          # Download installer using browser User-Agent to bypass Cloudflare 403 blocks
-          wget -U "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" https://apt.devkitpro.org/install-devkitpro-pacman
+          # Download installer using browser User-Agent to bypass Cloudflare blocks
+          wget -U "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" https://apt.devkitpro.org/install-devkitpro-pacman
           chmod +x ./install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
           
-          # Force sync and install switch development packages with retry logic
-          sudo dkp-pacman -Sy --noconfirm || true
-          sudo dkp-pacman -S --noconfirm switch-dev libnx switch-tools || \
-          sudo dkp-pacman -S --noconfirm --needed switch-dev libnx switch-tools
+          # Force dkp-pacman to initialize and sync package databases completely
+          sudo dkp-pacman -Sy --noconfirm
+          
+          # Explicitly install switch-dev, libnx, and switch-tools
+          sudo dkp-pacman -S --noconfirm switch-dev libnx switch-tools
 
-      - name: Verify Environment Paths
+      - name: Verify Environment and Libnx Files
         run: |
-          echo "Checking if libnx exists..."
-          ls -la /opt/devkitpro/libnx || echo "libnx folder missing!"
+          echo "Checking contents of /opt/devkitpro:"
+          ls -la /opt/devkitpro || true
+          echo "Checking contents of /opt/devkitpro/libnx:"
+          ls -la /opt/devkitpro/libnx || true
 
       - name: Compile NRO Binary
         run: |
@@ -39,7 +42,8 @@ jobs:
           export DEVKITA64=/opt/devkitpro/devkitA64
           export PATH=$PATH:$DEVKITPRO/tools/bin
           
-          make
+          # Run make with verbose output to track rule execution
+          make V=1
 
       - name: Upload Compiled NRO Artifact
         uses: actions/upload-artifact@v4
