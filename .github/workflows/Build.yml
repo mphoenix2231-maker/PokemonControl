@@ -13,12 +13,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Fix Case Sensitivity & Folder Structure
+        run: |
+          # Ensure lowercase source directory exists for the Makefile
+          if [ -d "Source" ] && [ ! -d "source" ]; then
+            mv Source source
+          fi
+          mkdir -p source build
+
       - name: Install DevkitPro & Switch Toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y wget gdebi-core make curl
           
-          # Download devkitPro installer with browser User-Agent
+          # Download installer with browser User-Agent
           wget -U "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" https://apt.devkitpro.org/install-devkitpro-pacman
           chmod +x ./install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
@@ -27,23 +35,19 @@ jobs:
           sudo dkp-pacman -Sy --noconfirm
           sudo dkp-pacman -S --noconfirm switch-dev libnx switch-tools
 
-      - name: Compile NRO Binary and Force ELF2NRO Execution
+      - name: Compile NRO Binary
         run: |
-          # Export path variables so Make can locate elf2nro and devkitA64 tools
           export DEVKITPRO=/opt/devkitpro
           export DEVKITA64=/opt/devkitpro/devkitA64
           export PATH=/opt/devkitpro/tools/bin:/opt/devkitpro/devkitA64/bin:$PATH
           
-          # Build target
           make clean
-          make
+          make V=1
           
-          # Fallback check: If make built the ELF but missed NRO creation, run elf2nro directly
-          if [ -f "build/PokemonControl.elf" ] && [ ! -f "PokemonControl.nro" ]; then
-            echo "Converting ELF to NRO manually via elf2nro..."
+          # Manual fallback conversion if elf exists but nro doesn't
+          if [ -f "build/PokemonControl.elf" ]; then
             elf2nro build/PokemonControl.elf PokemonControl.nro
-          elif [ -f "PokemonControl.elf" ] && [ ! -f "PokemonControl.nro" ]; then
-            echo "Converting root ELF to NRO manually..."
+          elif [ -f "PokemonControl.elf" ]; then
             elf2nro PokemonControl.elf PokemonControl.nro
           fi
 
@@ -53,8 +57,9 @@ jobs:
             echo "SUCCESS: PokemonControl.nro generated!"
             ls -lh PokemonControl.nro
           else
-            echo "ERROR: NRO file was not created. Checking directory layout:"
+            echo "ERROR: NRO file was not created. Directory layout:"
             ls -la
+            ls -la source/ || true
             ls -la build/ || true
             exit 1
           fi
