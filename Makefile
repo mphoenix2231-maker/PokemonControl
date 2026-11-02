@@ -22,21 +22,17 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 export OUTPUT	:= $(CURDIR)/$(TARGET)
 export TOPDIR	:= $(CURDIR)
 
-export VPATH	:= $(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
-		   $(foreach dir,$(DATA),$(CURDIR)/$(dir))
+export VPATH	:= $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
 
 export DEPSDIR	:= $(CURDIR)/$(BUILD)
 
-CFILES		:= $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CPPFILES	:= $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
-SFILES		:= $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+# Automatically find all C, C++, and assembly files regardless of casing
+CFILES		:= $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c $(dir)/*.C)))
+CPPFILES	:= $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp $(dir)/*.CPP)))
+SFILES		:= $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s $(dir)/*.S)))
 
-export OFILES	:= $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
-export INCLUDE	:= $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-		   $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-		   -I$(CURDIR)/$(BUILD)
-
-export LIBPATHS	:= $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+export OFILES	:= $(CPPFILES:.cpp=.o) $(CPPFILES:.CPP=.o) $(CFILES:.c=.o) $(CFILES:.C=.o) $(SFILES:.s=.o) $(SFILES:.S=.o)
+export INCLUDE	:= $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) -I$(CURDIR)/$(BUILD)
 
 include $(DEVKITPRO)/libnx/switch_rules
 
@@ -60,7 +56,7 @@ else
 CFLAGS		:= -g -Wall -O2 -ffunction-sections $(ARCH) $(INCLUDE)
 CXXFLAGS	:= $(CFLAGS)
 ASFLAGS		:= $(ARCH)
-LDFLAGS		:= -specs=switch.specs $(ARCH) $(LIBPATHS)
+LDFLAGS		:= -specs=switch.specs $(ARCH)
 
 LIBS		:= -lnx -lm
 
@@ -72,6 +68,4 @@ $(OUTPUT).elf	: $(OFILES)
 
 -include $(DEPSDIR)/*.d
 
-#---------------------------------------------------------------------------------
 endif
-#---------------------------------------------------------------------------------
