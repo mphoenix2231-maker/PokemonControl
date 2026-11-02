@@ -13,13 +13,27 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Fix Case Sensitivity & Folder Structure
+      - name: Permanent Case Fix for Source Files
         run: |
-          # Ensure lowercase source directory exists for the Makefile
-          if [ -d "Source" ] && [ ! -d "source" ]; then
-            mv Source source
+          echo "Checking source directory contents before fix:"
+          ls -la source/ || true
+          
+          # Force any variant of Main.c / MAIN.c to lowercase main.c
+          if [ -f "source/Main.c" ]; then
+            mv source/Main.c source/main.c
+            echo "Renamed Main.c to main.c"
           fi
-          mkdir -p source build
+          if [ -f "source/MAIN.c" ]; then
+            mv source/MAIN.c source/main.c
+            echo "Renamed MAIN.c to main.c"
+          fi
+          if [ -f "source/Main.cpp" ]; then
+            mv source/Main.cpp source/main.cpp
+            echo "Renamed Main.cpp to main.cpp"
+          fi
+          
+          echo "Source directory contents after fix:"
+          ls -la source/
 
       - name: Install DevkitPro & Switch Toolchain
         run: |
@@ -44,7 +58,7 @@ jobs:
           make clean
           make V=1
           
-          # Manual fallback conversion if elf exists but nro doesn't
+          # Fallback manual ELF to NRO conversion if needed
           if [ -f "build/PokemonControl.elf" ]; then
             elf2nro build/PokemonControl.elf PokemonControl.nro
           elif [ -f "PokemonControl.elf" ]; then
@@ -59,8 +73,6 @@ jobs:
           else
             echo "ERROR: NRO file was not created. Directory layout:"
             ls -la
-            ls -la source/ || true
-            ls -la build/ || true
             exit 1
           fi
 
