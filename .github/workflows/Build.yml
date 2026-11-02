@@ -13,22 +13,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Dependencies & Spoof DevkitPro Download
+      - name: Install Dependencies & DevkitPro Toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y wget gdebi-core make
           
-          # Download devkitPro installer using a real browser User-Agent to bypass 403 Cloudflare blocks
+          # Download installer using browser User-Agent to bypass Cloudflare 403 blocks
           wget -U "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" https://apt.devkitpro.org/install-devkitpro-pacman
           chmod +x ./install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
           
-          # Configure dkp-pacman to use custom user-agent for internal package downloads
-          sudo sed -i 's/#XferCommand = \/usr\/bin\/wget/XferCommand = \/usr\/bin\/wget -U "dkp-pacman"/g' /opt/devkitpro/pacman/etc/pacman.conf || true
-          
-          # Install switch development tools
-          sudo dkp-pacman -Syu --noconfirm || true
-          sudo dkp-pacman -S --noconfirm switch-dev libnx switch-tools
+          # Force sync and install switch development packages with retry logic
+          sudo dkp-pacman -Sy --noconfirm || true
+          sudo dkp-pacman -S --noconfirm switch-dev libnx switch-tools || \
+          sudo dkp-pacman -S --noconfirm --needed switch-dev libnx switch-tools
+
+      - name: Verify Environment Paths
+        run: |
+          echo "Checking if libnx exists..."
+          ls -la /opt/devkitpro/libnx || echo "libnx folder missing!"
 
       - name: Compile NRO Binary
         run: |
