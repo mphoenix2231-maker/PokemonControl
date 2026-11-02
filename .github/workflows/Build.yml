@@ -5,28 +5,32 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: devkitpro/devkita64:latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Disable Pacman Signature Checks
+      - name: Install devkitPro and Switch Toolchain
         run: |
-          # This disables key verification entirely so pacman never fails on missing keys
-          sed -i 's/SigLevel = Required DatabaseOptional/SigLevel = Never/g' /etc/pacman.conf
-          sed -i 's/SigLevel = PackageRequired/SigLevel = Never/g' /etc/pacman.conf
-
-      - name: Install Switch Development Libraries
-        run: |
-          dkp-pacman -Sy --noconfirm switch-dev libnx switch-tools
-
-      - name: Verify Project Structure
-        run: |
-          ls -R
+          sudo apt-get update
+          sudo apt-get install -y wget gdebi-core make
+          
+          # Download and run official devkitPro installer for Ubuntu
+          wget https://apt.devkitpro.org/install-devkitpro-pacman
+          chmod +x ./install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
+          
+          # Install switch development packages cleanly
+          sudo dkp-pacman -Syu --noconfirm
+          sudo dkp-pacman -S --noconfirm switch-dev libnx switch-tools
 
       - name: Run Make Compiler
         run: |
+          # Set explicit environment paths for the build step
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITA64=/opt/devkitpro/devkitA64
+          export PATH=$PATH:$DEVKITPRO/tools/bin
+          
           make
 
       - name: Upload Compiled NRO Artifact
@@ -34,4 +38,3 @@ jobs:
         with:
           name: PokemonControl-NRO
           path: PokemonControl.nro
-    
