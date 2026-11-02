@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install DevkitPro and Switch Toolchain
+      - name: Install DevkitPro & Switch Toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y wget gdebi-core make curl
@@ -23,18 +23,9 @@ jobs:
           chmod +x ./install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
           
-          # Force dkp-pacman to initialize and sync package databases completely
+          # Force sync and install core packages explicitly
           sudo dkp-pacman -Sy --noconfirm
-          
-          # Explicitly install switch-dev, libnx, and switch-tools
           sudo dkp-pacman -S --noconfirm switch-dev libnx switch-tools
-
-      - name: Verify Environment and Libnx Files
-        run: |
-          echo "Checking contents of /opt/devkitpro:"
-          ls -la /opt/devkitpro || true
-          echo "Checking contents of /opt/devkitpro/libnx:"
-          ls -la /opt/devkitpro/libnx || true
 
       - name: Compile NRO Binary
         run: |
@@ -42,8 +33,9 @@ jobs:
           export DEVKITA64=/opt/devkitpro/devkitA64
           export PATH=$PATH:$DEVKITPRO/tools/bin
           
-          # Run make with verbose output to track rule execution
-          make V=1
+          # Create build directory explicitly before running make
+          mkdir -p build
+          make
 
       - name: Upload Compiled NRO Artifact
         uses: actions/upload-artifact@v4
